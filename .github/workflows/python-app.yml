@@ -1,39 +1,43 @@
-# This workflow will install Python dependencies, run tests and lint with a single version of Python
-# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
-
-name: Python application
+name: Upload Python Package
 
 on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
-
-permissions:
-  contents: read
+push:
+    branches: [main]
 
 jobs:
-  build:
+deploy:
 
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
-    - name: Set up Python 3.10
-      uses: actions/setup-python@v3
+    - uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
       with:
-        python-version: "3.10"
+        python-version: '3.x'
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install flake8 pytest
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-    - name: Lint with flake8
+        pip install setuptools wheel
+
+    - name: Build
       run: |
-        # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    - name: Test with pytest
-      run: |
-        pytest
+        python setup.py sdist
+        echo `ls dist/`
+
+    - name: qbee.io authentication
+      uses: qbee-io/authenticate-action@v1
+      id: qbee-auth
+      with:
+        login: ${{ secrets.USERNAME_KEY }}
+        password: ${{ secrets.PASSWORD_KEY }}
+
+    - name: qbee.io file upload
+      uses: qbee-io/file-upload-action@v1
+      with:
+        token: ${{ steps.qbee-auth.outputs.token }}
+        filename: 'py_qbee_tst-0.1.tar.gz'
+        qbee_directory: '/'
+        local_directory: 'dist'
